@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum SeverityLevel {
+  low
+  medium
+  high
+}
+
+enum AnalysisInputType {
+  text
+  image
+}
+
+enum AnalysisStatus {
+  pending
+  processed
+  failed
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(user)
+
+  chatSessions ChatSession[]
+  analyses     AnalysisRequest[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ChatSession {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status     String        @default("active")
+  startedAt  DateTime      @default(now())
+  endedAt    DateTime?
+
+  messages   ChatMessage[]
+}
+
+model ChatMessage {
+  id         String      @id @default(uuid())
+  sessionId  String
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role       MessageRole
+  content    String
+  intent     String?
+
+  createdAt  DateTime    @default(now())
+}
+
+model AnalysisRequest {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  inputType          AnalysisInputType
+  originalText       String?
+  status             AnalysisStatus    @default(pending)
+  severity           SeverityLevel?
+  classification     String?
+  aiSummary          String?
+  recommendedActions Json?
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  evidences          UploadedEvidence[]
+}
+
+model UploadedEvidence {
+  id                String          @id @default(uuid())
+  analysisRequestId String
+  analysisRequest   AnalysisRequest @relation(fields: [analysisRequestId], references: [id], onDelete: Cascade)
+
+  fileUrl           String
+  fileType          String
+  mimeType          String?
+  size              Int?
+  originalName      String?
+
+  createdAt         DateTime        @default(now())
+}
