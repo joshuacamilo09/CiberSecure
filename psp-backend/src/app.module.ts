@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { envValidationSchema } from './config/env.validation';
 import { GeminiModule } from './integrations/gemini/gemini.module';
 import { AiTriageModule } from './modules/ai-triage/ai-triage.module';
@@ -20,16 +19,13 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
+    // Rate limiting global por IP (protege também os endpoints de IA, que têm custo por pedido)
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 20,
+        limit: 60,
       },
     ]),
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/uploads',
-    }),
     PrismaModule,
     GeminiModule,
     AuthModule,
@@ -38,5 +34,6 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     AiTriageModule,
     PrintAnalysisModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
